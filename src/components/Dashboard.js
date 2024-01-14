@@ -4,34 +4,71 @@ import Panel from "./Panel";
 
 import classnames from "classnames";
 
+import {
+  getTotalPhotos,
+  getTotalTopics,
+  getUserWithMostUploads,
+  getUserWithLeastUploads
+} from "helpers/selectors";
+
 const data = [
   {
     id: 1,
     label: "Total Photos",
-    value: 10
+    getValue: getTotalPhotos
   },
   {
     id: 2,
     label: "Total Topics",
-    value: 4
+    getValue: getTotalTopics
   },
   {
     id: 3,
     label: "User with the most uploads",
-    value: "Allison Saeng"
+    getValue: getUserWithMostUploads
   },
   {
     id: 4,
     label: "User with the least uploads",
-    value: "Lukas Souza"
+    getValue: getUserWithLeastUploads
   }
 ];
 
 class Dashboard extends Component {
   state = {
-    loading: false,
-    focused: null
+    loading: true,
+    focused: null,
+    photos: [],
+    topics: []
   };
+
+  componentDidMount() {
+    const focused = JSON.parse(localStorage.getItem("focused"));
+
+    if (focused) {
+      this.setState({ focused });
+    }
+
+    const urlsPromise = [
+      "/api/photos",
+      "/api/topics",
+    ].map(url => fetch(url).then(response => response.json()));
+
+    Promise.all(urlsPromise)
+      .then(([photos, topics]) => {
+        this.setState({
+          loading: false,
+          photos: photos,
+          topics: topics
+        });
+      });
+  }
+
+  componentDidUpdate(previousProps, previousState) {
+    if (previousState.focused !== this.state.focused) {
+      localStorage.setItem("focused", JSON.stringify(this.state.focused));
+    }
+  }
 
   selectPanel(id) {
     this.setState(previousState => ({
@@ -49,8 +86,8 @@ class Dashboard extends Component {
     }
 
     const panels = (this.state.focused ? data.filter(panel => this.state.focused === panel.id) : data)
-      .map(({ id, label, value }) => (
-        <Panel key={id} label={label} value={value} onSelect={event => this.selectPanel(id)} />
+      .map(({ id, label, getValue }) => (
+        <Panel key={id} label={label} value={getValue(this.state)} onSelect={() => this.selectPanel(id)} />
       ));
 
     return <main className={dashboardClasses}>{panels}</main>;
